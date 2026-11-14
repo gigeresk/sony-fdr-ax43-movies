@@ -25,6 +25,10 @@ import ax43put as core
 APP = "AX43 Movie Adder"
 VIDEO_EXT = {".mp4", ".m4v", ".mov", ".mkv", ".avi", ".wmv", ".webm", ".flv", ".mpg", ".mpeg",
              ".ts", ".mts", ".m2ts", ".3gp", ".ogv", ".vob"}
+REMINDER_TITLE = "⚠  New movies won't appear on the camera until you do this:"
+REMINDER_STEPS = ("1. Put the card in the camera.\n"
+                  "2. MENU > Setup > Media Settings > Repair Img. DB F. > Yes\n"
+                  "3. Playback > switch the movie format to MP4.")
 STAGE_TEXT = {"queued": "Waiting", "planned": "Waiting", "encoding": "Converting",
               "building": "Building file", "copying": "Copying to card", "done": "Added",
               "failed": "Failed", "cancelled": "Cancelled"}
@@ -165,8 +169,15 @@ class App:
         self.start_btn = ttk.Button(btns, text="Start", command=self.manual_start)
         self.start_btn.pack(side="right", padx=6)
 
-        self.msg = tk.Label(root, text="", justify="left", anchor="w", bg="#e8f4ea",
-                            fg="#14532d", padx=10, pady=6, font=("Segoe UI", 10))
+        # finish box: a status line plus a hard-to-miss reminder about the camera repair step
+        self.msg = tk.Frame(root, bg="#fff4d6", highlightbackground="#e0a800", highlightthickness=2)
+        self.msg_head = tk.Label(self.msg, text="", anchor="w", justify="left", bg="#fff4d6",
+                                 fg="#14532d", font=("Segoe UI", 10, "bold"), padx=10)
+        self.msg_head.pack(fill="x", pady=(6, 2))
+        tk.Label(self.msg, text=REMINDER_TITLE, anchor="w", justify="left", bg="#fff4d6",
+                 fg="#8a4b00", font=("Segoe UI", 11, "bold"), padx=10).pack(fill="x")
+        tk.Label(self.msg, text=REMINDER_STEPS, anchor="w", justify="left", bg="#fff4d6",
+                 fg="#3d2a00", font=("Segoe UI", 10), padx=10).pack(fill="x", pady=(2, 8))
         self.log = tk.Text(root, height=6, state="disabled", wrap="word", font=("Consolas", 9),
                            relief="flat", bg="#f6f6f6")
         self.log.pack(fill="both", padx=10, pady=(0, 10))
@@ -264,7 +275,9 @@ class App:
         except Exception:
             ok = False
         if ok:
-            self.show_msg(f"Card {letter} ejected - safe to remove.\n\n" + core.CAMERA_STEPS)
+            self.show_msg(f"Card {letter} ejected - safe to remove.")
+            messagebox.showwarning(APP, "Card ejected - safe to remove.\n\n" + REMINDER_TITLE + "\n\n"
+                                   + REMINDER_STEPS)
             self.cards = None  # force refresh
         else:
             messagebox.showwarning(APP, f"Windows could not eject {letter} right now. "
@@ -361,7 +374,7 @@ class App:
         self.write_log("Cancelling ...")
 
     def show_msg(self, text):
-        self.msg.config(text=text)
+        self.msg_head.config(text=text)
         self.msg.pack(fill="x", padx=10, pady=4, before=self.log)
 
     # ---------------------------------------------------------- event pump
@@ -398,9 +411,8 @@ class App:
                     self.cancel_btn.config(state="disabled")
                     self.update_card_info()
                     if ev[1]:
-                        self.show_msg("Done. Click 'Eject card', put the card in the camera, then:\n"
-                                      "  MENU > Setup > Media Settings > Repair Img. DB F. > Yes\n"
-                                      "  Playback > switch the movie format to MP4.")
+                        n = sum(1 for i in self.items if i["state"] == "done")
+                        self.show_msg(f"Done - {n} video(s) on the card. Click 'Eject card' when finished.")
                     self.maybe_start()
         except queue.Empty:
             pass

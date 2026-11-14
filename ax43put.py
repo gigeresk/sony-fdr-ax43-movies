@@ -863,7 +863,8 @@ def add_videos(card, videos, bitrate=2500, preset="slow", dry_run=False, log=pri
     return [tuple(r) for r in results]
 
 
-CAMERA_STEPS = ("Eject the card safely, put it in the camera, then:\n"
+CAMERA_STEPS = ("IMPORTANT: new movies won't appear on the camera until you repair its database.\n"
+                "Eject the card safely, put it in the camera, then:\n"
                 "  MENU -> Setup -> Media Settings -> Repair Img. DB F. -> Yes\n"
                 "  Playback -> switch the movie format to MP4.")
 
