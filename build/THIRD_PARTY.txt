@@ -1,0 +1,22 @@
+AX43 Movie Adder is free software under the GNU GPL v3 or later (see LICENSE).
+
+Third-party components bundled in the Windows .exe:
+
+FFmpeg (ffmpeg.exe, ffprobe.exe and libav* DLLs), including libx264
+  License: GNU GPL v3 (this is a GPL build)
+  Binaries: https://github.com/BtbN/FFmpeg-Builds (win64-gpl-shared)
+  Source:   https://github.com/FFmpeg/FFmpeg  and  https://code.videolan.org/videolan/x264
+  Build scripts for the exact binaries: https://github.com/BtbN/FFmpeg-Builds
+
+Python 3.12 - Python Software Foundation License
+  https://www.python.org/
+
+Tcl/Tk (tkinter) - Tcl/Tk License (BSD-style)
+  https://www.tcl.tk/
+
+tkinterdnd2 / tkDnD - MIT License
+  https://github.com/Eliav2/tkinterdnd2
+
+PyInstaller bootloader - GPL v2 with a special exception permitting distribution
+  of bundled applications under any license
+  https://pyinstaller.org/

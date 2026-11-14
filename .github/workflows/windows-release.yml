@@ -1,0 +1,67 @@
+name: Windows build
+
+# Push a tag like v1.0.0 (see build/release.sh) -> builds the exe on Windows and
+# publishes a GitHub Release with it. "Run workflow" in the Actions tab builds
+# the exe as a downloadable artifact without making a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build exe
+        shell: pwsh
+        run: ./build/build_windows.ps1
+
+      - name: Smoke test (convert a clip onto a fake card with the bundled ffmpeg)
+        shell: pwsh
+        run: |
+          $b = "$env:LOCALAPPDATA\ax43build"
+          $env:AX43_FFMPEG = "$b\src\ffmpeg\ffmpeg.exe"
+          $env:AX43_FFPROBE = "$b\src\ffmpeg\ffprobe.exe"
+          New-Item -ItemType Directory -Force fakecard\AVF_INFO, fakecard\MP_ROOT\100ANV01 | Out-Null
+          & $env:AX43_FFMPEG -v error -f lavfi -i "testsrc2=size=1920x1080:rate=25:duration=6" `
+              -f lavfi -i "sine=frequency=440:sample_rate=44100:duration=6" -c:v libx264 -c:a aac test.mp4
+          & "$b\venv\Scripts\python.exe" ax43put.py test.mp4 --card fakecard --preset fast
+          if ($LASTEXITCODE) { throw "ax43put failed" }
+          & $env:AX43_FFPROBE -v error -show_entries stream=codec_name,width,height,nb_frames -of csv=p=0 `
+              fakecard\MP_ROOT\100ANV01\MAH00001.MP4
+          if (-not (Test-Path fakecard\MP_ROOT\100ANV01\MAH00001.THM)) { throw "no THM written" }
+
+      - name: Collect files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item "$env:LOCALAPPDATA\ax43build\dist\AX43 Movie Adder.exe" out\AX43-Movie-Adder.exe
+          Copy-Item build\THIRD_PARTY.txt, LICENSE out\
+          $h = (Get-FileHash out\AX43-Movie-Adder.exe -Algorithm SHA256).Hash.ToLower()
+          "$h  AX43-Movie-Adder.exe" | Out-File -Encoding ascii out\SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AX43-Movie-Adder
+          path: out/
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @"
+          **AX43 Movie Adder $env:GITHUB_REF_NAME** - drag videos onto ``AX43-Movie-Adder.exe`` with the camera's SD card plugged in.
+
+          Then on the camera: MENU > Setup > Media Settings > Repair Img. DB F. > Yes, and switch playback to MP4.
+
+          Windows may show a SmartScreen warning because the exe is not code-signed: More info > Run anyway.
+          Bundles FFmpeg (GPL) - see THIRD_PARTY.txt.
+          "@
+          gh release create "$env:GITHUB_REF_NAME" (Get-ChildItem out).FullName --title "AX43 Movie Adder $env:GITHUB_REF_NAME" --notes $notes
